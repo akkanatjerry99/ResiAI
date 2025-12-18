@@ -1,0 +1,8 @@
+{
+  "name": "ResiFlow AI",
+  "description": "A modern, glassmorphism-styled resident workflow assistant featuring intelligent patient lists, clinical calculators, and AI-powered handoff generation.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

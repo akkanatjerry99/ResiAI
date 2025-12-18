@@ -1,0 +1,107 @@
+### Health Check
+GET http://localhost:5000/health
+
+###
+
+### Register User
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "doctor@hospital.com",
+  "password": "SecurePassword123",
+  "name": "Dr. John Doe",
+  "role": "Resident"
+}
+
+###
+
+### Login
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "doctor@hospital.com",
+  "password": "SecurePassword123"
+}
+
+###
+
+### Get Profile (replace TOKEN with actual token from login)
+GET http://localhost:5000/api/auth/profile
+Authorization: Bearer TOKEN
+
+###
+
+### Get All Patients
+GET http://localhost:5000/api/patients
+Authorization: Bearer TOKEN
+
+###
+
+### Create Patient
+POST http://localhost:5000/api/patients
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "age": 65,
+  "gender": "M",
+  "diagnosis": "Community-acquired pneumonia",
+  "room": "401A",
+  "admissionDate": "2025-12-10",
+  "acuity": "Watch",
+  "isolation": "Droplet",
+  "underlyingConditions": "DM Type 2, HTN",
+  "allergies": "Penicillin",
+  "medications": [],
+  "tasks": []
+}
+
+###
+
+### Get Patient Statistics
+GET http://localhost:5000/api/patients/statistics
+Authorization: Bearer TOKEN
+
+###
+
+### Add Task to Patient (replace PATIENT_ID)
+POST http://localhost:5000/api/patients/PATIENT_ID/tasks
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "description": "Check morning labs",
+  "priority": "Before Noon"
+}
+
+###
+
+### Add Medication to Patient (replace PATIENT_ID)
+POST http://localhost:5000/api/patients/PATIENT_ID/medications
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "name": "Ceftriaxone",
+  "dose": "2g",
+  "route": "IV",
+  "frequency": "q24h"
+}
+
+###
+
+### Add Lab Result (replace PATIENT_ID)
+POST http://localhost:5000/api/patients/PATIENT_ID/labs
+Authorization: Bearer TOKEN
+Content-Type: application/json
+
+{
+  "labType": "creatinine",
+  "date": "2025-12-13",
+  "value": 1.2
+}
+
+###

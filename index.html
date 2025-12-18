@@ -1,0 +1,211 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ResiFlow AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              main: 'var(--text-main)',
+              muted: 'var(--text-muted)',
+              glass: {
+                panel: 'var(--bg-glass-panel)',
+                border: 'var(--border-glass)',
+                depth: 'var(--bg-depth)',
+                100: 'var(--bg-glass-panel)', // Legacy mapping
+              },
+              medical: {
+                teal: '#2dd4bf',
+                blue: '#3b82f6',
+                alert: '#ef4444',
+                warning: '#f59e0b',
+                success: '#10b981',
+              }
+            },
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+              heading: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+              thai: ['"Prompt"', 'system-ui', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Modern variable fonts: Inter + Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        /* Light Mode (Day) - Modern Aurora Gradient */
+        /* Blends: Cool White -> Soft Indigo -> Pale Blue -> Soft Violet */
+        --bg-main-grad: linear-gradient(125deg, #f8fafc 0%, #e0e7ff 35%, #eef2ff 70%, #f5f3ff 100%);
+        
+        --text-main: #0f172a; /* slate-900 for sharper contrast */
+        --text-muted: #64748b; /* slate-500 */
+        
+        /* Glass Panel: Crystalline Look - Lower opacity, High Blur */
+        --bg-glass-panel: rgba(255, 255, 255, 0.70); 
+        
+        /* Border: Very subtle white/light-indigo mix */
+        --border-glass: rgba(255, 255, 255, 0.6); 
+        
+        /* Depth: For inputs/secondary areas */
+        --bg-depth: rgba(255, 255, 255, 0.5); 
+        
+        --shadow-color: rgba(99, 102, 241, 0.1); /* Soft Indigo Shadow */
+      }
+      
+      .dark {
+        /* Dark Mode (Night) - Deep Ocean Glass */
+        --bg-main-grad: radial-gradient(circle at top left, #0f172a, #172554); /* slate-900 to blue-950 */
+        --text-main: #f8fafc; /* slate-50 */
+        --text-muted: rgba(255, 255, 255, 0.65);
+        --bg-glass-panel: rgba(30, 58, 138, 0.20); /* Dark blue tint */
+        --border-glass: rgba(255, 255, 255, 0.08);
+        --bg-depth: rgba(0, 0, 0, 0.3);
+        --shadow-color: rgba(0, 0, 0, 0.4);
+      }
+
+      body {
+        margin: 0 !important;
+        min-height: 100vh;
+        transition: background 0.35s ease;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        /* Use the same font app-wide for consistency */
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "cv11", "ss01";
+        letter-spacing: -0.015em; /* Slight tracking reduction for sleekness */
+        font-weight: 400; /* thinner default weight */
+      }
+      /* Modern header typography */
+      h1, h2, h3, h4, h5, h6 {
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      /* Ensure no default margins/padding at root */
+      html, body {
+        padding: 0 !important;
+        margin: 0 !important;
+        height: 100%;
+        width: 100%;
+      }
+
+      /* Global Backdrop Filter for Glass Effect */
+      .bg-glass-panel, .bg-glass-depth {
+        backdrop-filter: blur(16px); /* lighter blur for performance */
+        -webkit-backdrop-filter: blur(16px);
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--text-muted);
+        opacity: 0.2;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-main);
+      }
+      
+      /* Enhanced Thai typography */
+      .font-thai {
+        font-family: 'Prompt', sans-serif;
+        font-weight: 400;
+        letter-spacing: 0.01em; /* Thai benefits from slight positive tracking */
+        line-height: 1.6; /* improve readability for Thai scripts */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Smooth Transitions */
+      * {
+        transition-property: background-color, border-color, color, fill, stroke;
+        transition-duration: 120ms; /* snappier transitions */
+      }
+
+      /* Panel Header: thinner, modern heading font */
+      .bg-glass-panel h3 {
+        font-family: "Inter", sans-serif;
+        font-weight: 600; /* modern emphasis inside panels */
+        letter-spacing: -0.01em;
+      }
+
+      /* Apply Thai font when element language is set to Thai */
+      :lang(th), .font-thai {
+        font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        letter-spacing: 0;
+        font-weight: 500;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Headings in Thai: keep sleek look but avoid tracking issues */
+      h1:lang(th), .font-heading:lang(th) {
+        font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        letter-spacing: 0; /* prevent Thai glyph collision/clipping */
+        font-weight: 600; /* slightly bolder for headers */
+        line-height: 1.25;
+      }
+
+      /* Inputs and placeholders with Thai should have comfortable line-height */
+      input:lang(th), textarea:lang(th) {
+        line-height: 1.6;
+      }
+
+      /* Prevent clipping in rounded inputs by adding slight padding for Thai */
+      input:lang(th).rounded-xl,
+      textarea:lang(th).rounded-xl,
+      .rounded-xl input:lang(th),
+      .rounded-xl textarea:lang(th) {
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+      }
+
+      /* Placeholder text in Thai */
+      input:lang(th)::placeholder,
+      textarea:lang(th)::placeholder,
+      .font-thai::placeholder {
+        font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        letter-spacing: 0;
+      }
+
+      /* Force Prompt font on all Thai text - override any conflicting styles */
+      [lang="th"] {
+        font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        letter-spacing: 0 !important;
+      }
+
+      /* Fallback: force Prompt on all .font-thai elements */
+      .font-thai {
+        font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+      }
+
+      /* Ensure children of Thai elements also use Thai font if not explicitly overridden */
+      [lang="th"] * {
+        font-family: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
