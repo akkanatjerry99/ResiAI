@@ -1,9 +1,7 @@
-// All AI interpret and scan features removed
 import { Request, Response } from 'express';
 import { GoogleGenAI } from '@google/genai';
 
 const getApiKey = () => {
-    // On the backend, we use process.env
     return process.env.API_KEY || '';
 };
 
@@ -19,7 +17,6 @@ const cleanJsonText = (text: string): string => {
 };
 
 export const interpretLabs = async (req: Request, res: Response) => {
-    // Accepts: { patient, labTimeline }
     const { patient, labTimeline } = req.body;
 
     if (!patient || !Array.isArray(labTimeline) || labTimeline.length === 0) {
@@ -62,9 +59,6 @@ Use clear, structured markdown. Use tables or bullet points if helpful. Be conci
     }
 };
 
-
-
-
 export const scanLabs = async (req: Request, res: Response) => {
     const { base64Images, patientNameContext } = req.body;
 
@@ -78,22 +72,55 @@ export const scanLabs = async (req: Request, res: Response) => {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const imageParts = base64Images.map((img: string) => ({ inlineData: { mimeType: "image/jpeg", data: img.replace(/^data:image\/(png|jpeg|jpg);base64,/, "") } }));
 
-    const prompt = `
-**TASK: EXTRACT EVERY DATE/TIME COLUMN AND EVERY VALUE FROM LAB TABLES (NO SKIPPING, NO MERGING, NO OMISSION!)**
+    function convertBEDate(dateTime: string): string {
+        if (!dateTime) return dateTime;
+        const match = dateTime.match(/(\d{2})\/(\d{2})\/(\d{2,4})(?:[\sT]+(\d{1,2}:\d{2}))?/);
+        if (!match) return dateTime;
+        let [_, day, month, year, time] = match;
+        let y = parseInt(year, 10);
+        if (y > 2400) y -= 543;
+        else if (y > 100) y += 1900;
+        else if (y < 100) y += 2000;
+        const pad = (n: any) => n.toString().padStart(2, '0');
+        return `${y}-${pad(month)}-${pad(day)} ${time || '00:00'}`;
+    }
 
-**Primary Goal**: For every test row and every date/time column, extract a result—even if the value is missing, unclear, or the cell is empty (use null or empty string for missing cells). Do NOT skip, merge, or omit any test or date/time column, even if the value is missing, unclear, or repeated. Output a FULL GRID: every possible test x every possible date/time cell.
+    try {
+        const imageParts = base64Images.map((img: string) => ({
+            inlineData: {
+                mimeType: "image/jpeg",
+                data: img.replace(/^data:image\/(png|jpeg|jpg);base64,/, "")
+            }
+        }));
 
-**Instructions:**
-1. Identify and extract ALL date/time columns in the table header (e.g., 25/11/68 16:52, 25/11/68 15:25, etc). If a date/time is present anywhere in the table, it must be included in the output, even if there is no value for some tests.
-2. For each test row (e.g., WBC, Hb, Platelet), extract a separate result for EVERY date column. If a value is missing, set value to null and flag to null. If a test or date appears more than once, include all instances.
-3. Return a flat array: one object per cell, with testName, value, unit, dateTime, flag, and category. Do NOT merge or skip any cell.
-4. Include all column headers (dates/times) and all row labels (test names), even if some values are missing or unclear.
-5. Buddhist Era (BE) Conversion is MANDATORY. Recognize dates like '2567', '2568' and convert to Gregorian by subtracting 543. All dateTime values MUST be in "YYYY-MM-DD HH:mm" format. If time is missing, use "00:00".
-6. For PBS, extract the entire text content into the 'pbsText' field.
-7. Output only clean JSON as below. Do NOT include any extra text, explanation, or markdown—just the JSON.
+        let extractedText = "";
+        const ocrPrompt = `Extract ALL text from this lab sheet image verbatim. Include all table headers, test names, values, units, flags, dates, times, and PBS findings. Return only the extracted text - do not interpret or reformat.`;
 
+        try {
+            const ocrResponse = await ai.models.generateContent({
+                model: "gemini-1.5-flash-latest",
+                contents: { parts: [...imageParts, { text: ocrPrompt }] }
+            });
+            extractedText = ocrResponse.text || "";
+        } catch (ocrError) {
+            console.error("OCR extraction error:", ocrError);
+        }
+
+        const parsePrompt = `You are a medical lab data parser. Parse this lab sheet text into structured results.
+
+Extracted Text:
+${extractedText}
+
+Rules:
+1. Extract test name, value, unit, flag (H/L/Normal)
+2. Identify all dates and times
+3. Convert Buddhist Era dates (2567+) by subtracting 543
+4. All dates in "YYYY-MM-DD HH:mm" format
+5. Extract PBS findings if present
+6. For each test-date combination, create one result
+
+Return only valid JSON:
 {
     "results": [
         {
@@ -102,74 +129,73 @@ export const scanLabs = async (req: Request, res: Response) => {
             "unit": "string",
             "flag": "H" | "L" | null,
             "dateTime": "YYYY-MM-DD HH:mm",
-            "category": "string" // e.g., 'CBC', 'Chemistry', 'Urinalysis'
+            "category": "string"
         }
     ],
-    "pbsText": "string" // Verbatim text from the PBS report section.
-}
-`;
+    "pbsText": "string or null"
+}`;
 
-    const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"];
-    let lastRawText = "";
-    let bestResult = null;
-    for (const modelName of modelsToTry) {
-        try {
-            const response = await ai.models.generateContent({
-                model: modelName,
-                contents: { parts: [...imageParts, { text: prompt }] },
-                config: { responseMimeType: "application/json" }
-            });
-            lastRawText = response.text || "";
-            let parsedResult;
+        let parsedResult = null;
+        let lastRawText = "";
+
+        const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest"];
+        for (const modelName of modelsToTry) {
             try {
+                const response = await ai.models.generateContent({
+                    model: modelName,
+                    contents: { parts: [{ text: parsePrompt }] },
+                    config: { responseMimeType: "application/json" }
+                });
+                lastRawText = response.text || "";
                 parsedResult = JSON.parse(cleanJsonText(lastRawText || "null"));
-            } catch (parseErr) {
-                parsedResult = null;
-            }
-            // Robust post-processing: ensure every test/date cell is present and convert BE dates
-            if (parsedResult && Array.isArray(parsedResult.results)) {
-                // Helper: Convert BE (Buddhist Era) to Gregorian
-                function convertBEDate(dateTime: string): string {
-                    if (!dateTime) return dateTime;
-                    // Match DD/MM/YY[YY] [HH:mm] or similar
-                    const match = dateTime.match(/(\d{2})\/(\d{2})\/(\d{2,4})(?:[\sT]+(\d{1,2}:\d{2}))?/);
-                    if (!match) return dateTime;
-                    let [_, day, month, year, time] = match;
-                    let y = parseInt(year, 10);
-                    if (y > 2400) y -= 543; // BE to Gregorian
-                    else if (y > 100) y += 1900; // 2-digit year fallback
-                    else if (y < 100) y += 2000; // 2-digit year fallback
-                    const pad = (n: any) => n.toString().padStart(2, '0');
-                    return `${y}-${pad(month)}-${pad(day)} ${time || '00:00'}`;
+
+                if (parsedResult && Array.isArray(parsedResult.results) && parsedResult.results.length > 0) {
+                    break;
                 }
-                // Collect all testNames and dateTimes (after conversion)
-                const testNames = new Set(parsedResult.results.map((r: any) => r.testName));
-                const dateTimesRaw = parsedResult.results.map((r: any) => r.dateTime);
-                const dateTimes = new Set(dateTimesRaw.map(convertBEDate));
-                const filledResults = [];
-                for (const testName of testNames) {
-                    for (const dateTimeRaw of dateTimesRaw) {
-                        const dateTime = convertBEDate(dateTimeRaw);
-                        const found = parsedResult.results.find((r: any) => r.testName === testName && convertBEDate(r.dateTime) === dateTime);
-                        if (found) {
-                            filledResults.push({ ...found, dateTime });
-                        } else {
-                            filledResults.push({ testName, value: null, unit: '', flag: null, dateTime, category: '' });
-                        }
+            } catch (error) {
+                console.error(`Error with model ${modelName}:`, error);
+            }
+        }
+
+        if (parsedResult && Array.isArray(parsedResult.results)) {
+            const results = parsedResult.results.map((r: any) => ({
+                ...r,
+                dateTime: convertBEDate(r.dateTime || "")
+            }));
+
+            const testNames = new Set(results.map((r: any) => r.testName));
+            const dateTimesRaw = results.map((r: any) => r.dateTime);
+            const filledResults = [];
+
+            for (const testName of testNames) {
+                for (const dateTimeRaw of dateTimesRaw) {
+                    const found = results.find((r: any) =>
+                        r.testName === testName && r.dateTime === dateTimeRaw
+                    );
+                    if (found) {
+                        filledResults.push(found);
+                    } else {
+                        filledResults.push({
+                            testName,
+                            value: null,
+                            unit: '',
+                            flag: null,
+                            dateTime: dateTimeRaw,
+                            category: ''
+                        });
                     }
                 }
-                parsedResult.results = filledResults;
-                bestResult = parsedResult;
-                break;
             }
-        } catch (error) {
-            // Try next model
+
+            return res.json({
+                results: filledResults,
+                pbsText: parsedResult.pbsText || null
+            });
         }
-    }
-    // Always return raw output for debugging
-    if (bestResult) {
-        return res.json({ ...bestResult, debugRaw: lastRawText });
-    } else {
-        res.json({ results: [], debugRaw: lastRawText });
+
+        res.json({ results: [] });
+    } catch (error) {
+        console.error("Lab scan error:", error);
+        res.status(500).json({ message: "Error scanning labs. Please try again." });
     }
 };
