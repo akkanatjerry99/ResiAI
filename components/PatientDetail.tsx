@@ -978,33 +978,75 @@ const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack, onUpdate
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <div className="font-bold text-main text-lg">Round - {formatToBuddhistEra(round.date)}</div>
-                          <div className="text-xs text-muted">By {round.author}</div>
                         </div>
                         <button onClick={() => { setRoundToEdit(round); setShowRoundingModal(true); }} className="p-1.5 rounded bg-glass-depth text-muted hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"><Pencil size={14}/></button>
                       </div>
-                      <div className="space-y-3">
-                        <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
-                          <div className="text-[10px] font-bold text-muted uppercase mb-1">Subjective</div>
-                          <p className="text-sm text-main whitespace-pre-wrap">{round.subjective}</p>
-                        </div>
-                        <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
-                          <div className="text-[10px] font-bold text-muted uppercase mb-1">Objective</div>
-                          <p className="text-sm text-main whitespace-pre-wrap">{round.objective}</p>
-                        </div>
-                        <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
-                          <div className="text-[10px] font-bold text-muted uppercase mb-1">Assessment & Plan</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                            {round.assessmentAndPlan.map((item, index) => (
-                              <div key={index} className="flex items-start gap-2">
-                                <span className="text-indigo-500 font-bold text-sm mt-0.5">{index + 1}.</span>
-                                <div>
-                                  <div className="text-sm font-bold text-main">{item.problem}</div>
-                                  <p className="text-sm text-muted">{item.plan}</p>
-                                </div>
-                              </div>
-                            ))}
+
+                      {round.summary && (
+                        <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/5 to-indigo-500/5 border border-violet-500/20 rounded-xl">
+                          <div className="text-[10px] font-bold text-violet-600 uppercase mb-1 flex items-center gap-1">
+                            <Sparkles size={12}/> AI Summary
                           </div>
+                          <p className="text-sm text-main whitespace-pre-wrap">{round.summary}</p>
                         </div>
+                      )}
+
+                      <div className="space-y-3">
+                        {round.subjective && (
+                          <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
+                            <div className="text-[10px] font-bold text-muted uppercase mb-1">Subjective</div>
+                            <p className="text-sm text-main whitespace-pre-wrap">{round.subjective}</p>
+                          </div>
+                        )}
+
+                        {(round.physicalExam || round.vitalTrends || round.vitalGraphImage) && (
+                          <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
+                            <div className="text-[10px] font-bold text-muted uppercase mb-1">Objective</div>
+                            {round.vitalGraphImage && (
+                              <img src={round.vitalGraphImage} alt="Vitals" className="w-full rounded-lg mb-2 border border-glass-border"/>
+                            )}
+                            {round.physicalExam && (
+                              <p className="text-sm text-main whitespace-pre-wrap mb-2">{round.physicalExam}</p>
+                            )}
+                            {round.vitalTrends && (
+                              <p className="text-xs text-muted whitespace-pre-wrap">{round.vitalTrends}</p>
+                            )}
+                            {(round.intake !== undefined || round.output !== undefined) && (
+                              <div className="text-xs text-muted mt-2">
+                                I/O: {round.intake || 0}/{round.output || 0} (Net: {round.netBalance || 0} ml)
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {round.systemsReview ? (
+                          <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
+                            <div className="text-[10px] font-bold text-muted uppercase mb-2">Assessment & Plan (Systems Review)</div>
+                            <div className="space-y-2">
+                              {Object.entries(round.systemsReview).filter(([_, v]) => v.trim().length > 0).map(([system, plan], index) => (
+                                <div key={index} className="flex items-start gap-2">
+                                  <span className="text-indigo-500 font-bold text-sm">{system}:</span>
+                                  <p className="text-sm text-main flex-1">{plan}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {round.assessment && (
+                              <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
+                                <div className="text-[10px] font-bold text-muted uppercase mb-1">Assessment</div>
+                                <p className="text-sm text-main whitespace-pre-wrap">{round.assessment}</p>
+                              </div>
+                            )}
+                            {round.plan && (
+                              <div className="bg-glass-depth p-3 rounded-xl border border-glass-border/50">
+                                <div className="text-[10px] font-bold text-muted uppercase mb-1">Plan</div>
+                                <p className="text-sm text-main whitespace-pre-wrap">{round.plan}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   )) : <div className="text-center py-12 text-muted italic border-2 border-dashed border-glass-border rounded-2xl">No rounds recorded.</div>}
