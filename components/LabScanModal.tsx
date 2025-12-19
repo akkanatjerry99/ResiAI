@@ -18,6 +18,7 @@ const LabScanModal: React.FC<LabScanModalProps> = ({ isOpen, onClose, patientNam
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState('');
+  const [scanStep, setScanStep] = useState<'ocr' | 'parsing' | null>(null);
   
   // Review State
   const [scannedResults, setScannedResults] = useState<RawLabResult[]>([]);
@@ -36,14 +37,14 @@ const LabScanModal: React.FC<LabScanModalProps> = ({ isOpen, onClose, patientNam
 
   useEffect(() => {
       if (isOpen) {
-          // Reset states when modal opens
           setPendingImages([]);
           setScannedResults([]);
           setShowReview(false);
           setShowPbsInput(false);
           setPbsFindings('');
           setShowImagePreview(false);
-          // Set default date/time to now, but this will be overridden if scan is successful
+          setScanStep(null);
+          setScanStatus('');
           setCollectionDate(new Date().toISOString().split('T')[0]);
           setCollectionTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
       }
@@ -82,10 +83,13 @@ const LabScanModal: React.FC<LabScanModalProps> = ({ isOpen, onClose, patientNam
       if (pendingImages.length === 0) return;
 
       setIsScanning(true);
-      setScanStatus('Reading lab values & timestamps...');
+      setScanStep('ocr');
+      setScanStatus('Extracting text from lab sheets...');
 
       try {
         const result = await apiClient.scanLabs(pendingImages, patientName);
+        setScanStep('parsing');
+        setScanStatus('Parsing lab values...');
         console.log('ScanLabs result:', result);
         if (result && Array.isArray(result.results) && result.results.length > 0) {
             // Standardize date formats and sort
@@ -143,6 +147,7 @@ const LabScanModal: React.FC<LabScanModalProps> = ({ isOpen, onClose, patientNam
       } finally {
         setIsScanning(false);
         setScanStatus('');
+        setScanStep(null);
       }
   };
 
@@ -179,9 +184,31 @@ const LabScanModal: React.FC<LabScanModalProps> = ({ isOpen, onClose, patientNam
 
       {isScanning && (
           <div className="absolute inset-0 z-[110] flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
-              <FlaskConical size={48} className="text-medical-blue animate-bounce" />
-              <div className="text-white font-bold mt-4 text-lg">Analyzing Lab Sheets...</div>
-              <div className="text-white/70 text-sm">{scanStatus}</div>
+              <div className="bg-glass-panel rounded-3xl p-8 max-w-sm backdrop-blur-xl border border-glass-border shadow-2xl">
+                  <div className="flex items-center justify-center mb-6">
+                      <FlaskConical size={48} className="text-blue-500 animate-bounce" />
+                  </div>
+
+                  <div className="text-white font-bold text-center text-lg mb-6">Analyzing Lab Sheet</div>
+
+                  <div className="space-y-4">
+                      <div className={`flex items-center gap-3 p-3 rounded-xl transition-all ${scanStep === 'ocr' ? 'bg-blue-500/20 border border-blue-500/50' : 'bg-green-500/10 border border-green-500/30'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${scanStep === 'ocr' ? 'bg-blue-500 text-white animate-pulse' : 'bg-green-500 text-white'}`}>
+                              {scanStep === 'ocr' ? '...' : '✓'}
+                          </div>
+                          <span className={`text-sm font-bold ${scanStep === 'ocr' ? 'text-white' : 'text-green-400'}`}>OCR Text Extraction</span>
+                      </div>
+
+                      <div className={`flex items-center gap-3 p-3 rounded-xl transition-all ${scanStep === 'parsing' ? 'bg-indigo-500/20 border border-indigo-500/50' : 'bg-glass-depth border border-glass-border'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${scanStep === 'parsing' ? 'bg-indigo-500 text-white animate-pulse' : scanStep === 'ocr' ? 'bg-gray-600 text-gray-400' : 'bg-green-500 text-white'}`}>
+                              {scanStep === 'parsing' ? '...' : scanStep === 'ocr' ? '⏳' : '✓'}
+                          </div>
+                          <span className={`text-sm font-bold ${scanStep === 'parsing' ? 'text-white' : scanStep === 'ocr' ? 'text-muted' : 'text-green-400'}`}>Lab Value Parsing</span>
+                      </div>
+                  </div>
+
+                  <div className="text-white/70 text-sm text-center mt-6">{scanStatus}</div>
+              </div>
           </div>
       )}
 
