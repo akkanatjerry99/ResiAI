@@ -27,6 +27,7 @@ import DischargeModal from './DischargeModal';
 import MedicationReconciliationModal from './MedicationReconciliationModal';
 import MedicationScanModal from './MedicationScanModal';
 import DrugInteractionModal from './DrugInteractionModal';
+import LabScanModal from './LabScanModal';
 import { generateOneLiner } from '../services/geminiService';
 import LabTableView from './LabTableView';
 import { formatToBuddhistEra } from '../services/dateService';
@@ -585,6 +586,7 @@ const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack, onUpdate
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewTitle, setPreviewTitle] = useState('');
   const [showManualLab, setShowManualLab] = useState(false);
+  const [showLabScanModal, setShowLabScanModal] = useState(false);
   const [showACPModal, setShowACPModal] = useState(false);
   const [showMedScanModal, setShowMedScanModal] = useState(false);
   const [showReconcileModal, setShowReconcileModal] = useState(false);
@@ -657,6 +659,10 @@ const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack, onUpdate
   const handleDeleteProblem = (index: number) => { const newList = currentProblemList.filter((_, i) => i !== index); updateProblemList(newList); };
   const handleSaveManualProblem = (problem: ProblemEntry) => { let newList = [...currentProblemList]; if (problemToEditIndex !== null) { newList[problemToEditIndex] = problem; } else { newList.push(problem); } updateProblemList(newList); setShowManualProblemModal(false); setProblemToEditIndex(null); };
   const handleSaveManualLab = (result: RawLabResult) => { let updates: Partial<Patient> = {}; const labs = { ...patient.labs }; const normalizedName = result.testName.toLowerCase(); const newEntry: LabValue = { date: result.dateTime || new Date().toISOString(), value: result.value, subResults: result.subResults }; if (normalizedName.includes('creatinine') || normalizedName === 'cr') labs.creatinine = [...labs.creatinine, newEntry]; else if (normalizedName.includes('sodium') || normalizedName === 'na') labs.sodium = [...labs.sodium, newEntry]; else if (normalizedName.includes('potassium') || normalizedName === 'k') labs.k = [...labs.k, newEntry]; else if (normalizedName.includes('wbc')) labs.wbc = [...labs.wbc, newEntry]; else if (normalizedName.includes('hgb') || normalizedName.includes('hemoglobin')) labs.hgb = [...labs.hgb, newEntry]; else if (normalizedName.includes('inr')) labs.inr = [...labs.inr, newEntry]; else { const existingCustom = labs.others.find(l => l.name.toLowerCase() === normalizedName); if (existingCustom) { existingCustom.values.push(newEntry); } else { labs.others.push({ name: result.testName, unit: result.unit, values: [newEntry] }); } } updates.labs = labs; onUpdatePatient({ ...patient, ...updates }); setShowManualLab(false); };
+  const handleSaveScannedLabs = (results: RawLabResult[]) => {
+    handleSaveLabResults(results);
+    setShowLabScanModal(false);
+  };
   const handleSaveLabResults = (results: RawLabResult[], pbsFindings?: string) => {
     const updatedPatient = JSON.parse(JSON.stringify(patient));
     const labs = updatedPatient.labs;
@@ -739,6 +745,7 @@ const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack, onUpdate
        <ProblemScanModal isOpen={showProblemScanModal} onClose={() => setShowProblemScanModal(false)} onScanComplete={(list) => { updateProblemList([...currentProblemList, ...list]); setShowProblemScanModal(false); }} />
        <ManualProblemModal isOpen={showManualProblemModal} onClose={() => { setShowManualProblemModal(false); setProblemToEditIndex(null); }} onSave={handleSaveManualProblem} initialData={problemToEditIndex !== null ? currentProblemList[problemToEditIndex] : undefined} />
        <ManualLabModal isOpen={showManualLab} onClose={() => setShowManualLab(false)} onSave={handleSaveManualLab} />
+       <LabScanModal isOpen={showLabScanModal} onClose={() => setShowLabScanModal(false)} patientName={patient.name} onScanComplete={handleSaveScannedLabs} />
       <MicroScanModal isOpen={showMicroScan} onClose={() => setShowMicroScan(false)} onScanComplete={handleMicroScanComplete} />
        <EditCultureModal isOpen={showEditCulture} onClose={() => { setShowEditCulture(false); setCultureToEdit(null); }} onSave={handleSaveCulture} initialData={cultureToEdit || undefined} />
        <ManualAdmissionModal isOpen={showManualAdmission} onClose={() => setShowManualAdmission(false)} onSave={(note) => { onUpdatePatient({ ...patient, admissionNote: note }); setProblemHistory([note.problemList || []]); setHistoryIndex(0); }} initialData={patient.admissionNote} />
@@ -1118,6 +1125,7 @@ const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack, onUpdate
                       <button onClick={() => setLabViewMode('panel')} className={`px-3 py-1 rounded-lg text-xs font-bold ${labViewMode === 'panel' ? 'bg-white dark:bg-slate-700 shadow-sm text-cyan-600' : 'text-muted'}`}><LayoutGrid size={14}/></button>
                       <button onClick={() => setLabViewMode('table')} className={`px-3 py-1 rounded-lg text-xs font-bold ${labViewMode === 'table' ? 'bg-white dark:bg-slate-700 shadow-sm text-cyan-600' : 'text-muted'}`}><LayoutGrid size={14}/></button>
                     </div>
+                    <button onClick={() => setShowLabScanModal(true)} className="p-2 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 flex items-center gap-1" title="Scan lab sheet with OCR"><Scan size={16}/></button>
                     <button onClick={() => setShowManualLab(true)} className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20"><Plus size={16}/></button>
                   </div>
                 </div>
